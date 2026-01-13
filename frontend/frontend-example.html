@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Eksempel - DATA1500</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 { color: #2c3e50; }
+        h2 { color: #34495e; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background-color: #2980b9; }
+        
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 200px;
+        }
+        
+        pre {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .success { color: #27ae60; }
+        .error { color: #c0392b; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+    <h1>Frontend Eksempel</h1>
+    <p>Dette er en enkel HTML-side som viser hvordan man bruker JavaScript <code>fetch()</code> for å snakke med Java-API-et vårt.</p>
+    
+    <div class="card">
+        <h2>Konfigurasjon</h2>
+        <p>Sørg for at Java-serveren kjører før du tester (f.eks. <code>java StudentCRUDAPI 8000 studenter.csv</code>).</p>
+        <label>API URL: <input type="text" id="apiUrl" value="http://localhost:8000/api/students"></label>
+    </div>
+
+    <!-- READ (GET) -->
+    <div class="card">
+        <h2>1. Hent alle studenter (GET)</h2>
+        <button onclick="getAllStudents()">Hent Studenter</button>
+        <div id="studentList"></div>
+    </div>
+
+    <!-- CREATE (POST) -->
+    <div class="card">
+        <h2>2. Opprett ny student (POST)</h2>
+        <input type="text" id="newName" placeholder="Navn (f.eks. Ola Nordmann)">
+        <input type="text" id="newProgram" placeholder="Studieprogram (f.eks. Data)">
+        <button onclick="createStudent()">Opprett Student</button>
+        <div id="createStatus" class="status"></div>
+    </div>
+
+    <!-- DEBUG / RAW JSON -->
+    <div class="card">
+        <h2>Raw JSON Response</h2>
+        <pre id="rawOutput">// Her kommer JSON-responsen...</pre>
+    </div>
+
+    <script>
+        // Hjelpefunksjon for å vise status
+        function showStatus(elementId, message, isError = false) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = 'status ' + (isError ? 'error' : 'success');
+        }
+
+        // 1. GET Request
+        async function getAllStudents() {
+            const url = document.getElementById('apiUrl').value;
+            const output = document.getElementById('rawOutput');
+            const listDiv = document.getElementById('studentList');
+            
+            listDiv.innerHTML = 'Laster...';
+            
+            try {
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Vis rå JSON
+                output.textContent = JSON.stringify(data, null, 2);
+                
+                // Generer HTML-tabell
+                if (data.length === 0) {
+                    listDiv.innerHTML = '<p>Ingen studenter funnet.</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>ID</th><th>Navn</th><th>Program</th></tr></thead><tbody>';
+                data.forEach(student => {
+                    html += `<tr>
+                        <td>${student.id}</td>
+                        <td>${student.name}</td>
+                        <td>${student.program}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                listDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Feil:', error);
+                output.textContent = 'Feil ved henting av data: ' + error.message;
+                listDiv.innerHTML = '<p class="error">Kunne ikke koble til API-et. Kjører serveren?</p>';
+            }
+        }
+
+        // 2. POST Request
+        async function createStudent() {
+            const url = document.getElementById('apiUrl').value;
+            const name = document.getElementById('newName').value;
+            const program = document.getElementById('newProgram').value;
+            const output = document.getElementById('rawOutput');
+            
+            if (!name || !program) {
+                showStatus('createStatus', 'Må fylle ut både navn og program!', true);
+                return;
+            }
+
+            const newStudent = {
+                name: name,
+                program: program
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newStudent)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                output.textContent = JSON.stringify(result, null, 2);
+                showStatus('createStatus', 'Student opprettet! ID: ' + result.id);
+                
+                // Tøm feltene
+                document.getElementById('newName').value = '';
+                document.getElementById('newProgram').value = '';
+                
+                // Oppdater listen automatisk
+                getAllStudents();
+                
+            } catch (error) {
+                console.error('Feil:', error);
+                output.textContent = 'Feil ved opprettelse: ' + error.message;
+                showStatus('createStatus', 'Feil: ' + error.message, true);
+            }
+        }
+    </script>
+</body>
+</html>
