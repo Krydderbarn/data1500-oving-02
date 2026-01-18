@@ -67,7 +67,13 @@ public class FileAccessAPI {
         
         // SÅRBARHET: Ingen sjekk av om filnavnet inneholder ".." eller "/"
         // Vi slår bare sammen data-mappen med filnavnet.
-        Path filePath = Paths.get(dataDirectory, filename);
+        Path filePath = Paths.get(dataDirectory, filename).normalize().toRealPath();
+
+        if (!filePath.startsWith(Paths.get(dataDirectory))){
+            System.out.println("Error: Path traversal");
+            sendResponse(exchange, 403, "{\"error\":\"Access denied\"}");
+            return;
+        }
         
         System.out.println("Forsøker å lese fil: " + filePath.toString());
         
